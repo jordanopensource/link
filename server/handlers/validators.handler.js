@@ -1,9 +1,9 @@
-const { isAfter, subDays, subHours, addMilliseconds, differenceInHours } = require("date-fns");
+const { addMilliseconds } = require("date-fns");
 const { body, param, query: queryValidator } = require("express-validator");
-const promisify = require("util").promisify;
+const promisify = require("node:util").promisify;
 const bcrypt = require("bcryptjs");
-const dns = require("dns");
-const URL = require("url");
+const dns = require("node:dns");
+const URL = require("node:url");
 const ms = require("ms");
 
 const { ROLES } = require("../consts");
@@ -45,7 +45,7 @@ const createLink = [
     .trim()
     .isLength({ min: 1, max: 64 })
     .withMessage("Custom URL length must be between 1 and 64.")
-    .custom(value => /^[a-zA-Z0-9-_]+$/g.test(value))
+    .custom(value => utils.customAddressRegex.test(value) || utils.customAlphabetRegex.test(value))
     .withMessage("Custom URL is not valid.")
     .custom(value => !utils.preservedURLs.some(url => url.toLowerCase() === value))
     .withMessage("You can't use this custom URL."),
@@ -120,7 +120,7 @@ const editLink = [
     .trim()
     .isLength({ min: 1, max: 64 })
     .withMessage("Custom URL length must be between 1 and 64.")
-    .custom(value => /^[a-zA-Z0-9-_]+$/g.test(value))
+    .custom(value => utils.customAddressRegex.test(value) || utils.customAlphabetRegex.test(value))
     .withMessage("Custom URL is not valid")
     .custom(value => !utils.preservedURLs.some(url => url.toLowerCase() === value))
     .withMessage("You can't use this custom URL."),

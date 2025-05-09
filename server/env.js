@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { cleanEnv, num, str, bool } = require("envalid");
+const { readFileSync } = require("node:fs");
 
 const supportedDBClients = [
   "pg",
@@ -10,12 +11,29 @@ const supportedDBClients = [
   "mysql2"
 ];
 
-const env = cleanEnv(process.env, {
+// make sure custom alphabet is not empty
+if (process.env.LINK_CUSTOM_ALPHABET === "") {
+  delete process.env.LINK_CUSTOM_ALPHABET;
+}
+
+// make sure jwt secret is not empty
+if (process.env.JWT_SECRET === "") {
+  delete process.env.JWT_SECRET;
+}
+
+// if is started with the --production argument, then set NODE_ENV to production
+if (process.argv.includes("--production")) {
+  process.env.NODE_ENV = "production";
+}
+
+const spec = {
   PORT: num({ default: 3000 }),
   SITE_NAME: str({ example: "Kutt", default: "Kutt" }),
   DEFAULT_DOMAIN: str({ example: "kutt.it", default: "localhost:3000" }),
   LINK_LENGTH: num({ default: 6 }),
-  DB_CLIENT: str({ choices: supportedDBClients, default: "sqlite3" }),
+  LINK_CUSTOM_ALPHABET: str({ default: "abcdefghkmnpqrstuvwxyzABCDEFGHKLMNPQRSTUVWXYZ23456789" }),
+  TRUST_PROXY: bool({ default: true }),
+  DB_CLIENT: str({ choices: supportedDBClients, default: "better-sqlite3" }),
   DB_FILENAME: str({ default: "db/data" }),
   DB_HOST: str({ default: "localhost" }),
   DB_PORT: num({ default: 5432 }),
@@ -47,6 +65,18 @@ const env = cleanEnv(process.env, {
   REPORT_EMAIL: str({ default: "" }),
   CONTACT_EMAIL: str({ default: "" }),
   NODE_APP_INSTANCE: num({ default: 0 }),
-});
+};
+
+for (const key in spec) {
+  const file_key = key + "_FILE";
+  if (!(file_key in process.env)) continue;
+  try {
+    process.env[key] = readFileSync(process.env[file_key], "utf8").trim();
+  } catch {
+    // on error, env_FILE just doesn't get applied.
+  }
+}
+
+const env = cleanEnv(process.env, spec);
 
 module.exports = env;

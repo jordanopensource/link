@@ -2,9 +2,12 @@ services:
   server:
     build:
       context: .
+    volumes:
+      - custom:/kutt/custom
     environment:
         DB_CLIENT: mysql2
         DB_HOST: mariadb
+        DB_PORT: 3306
         REDIS_ENABLED: true
         REDIS_HOST: redis
         REDIS_PORT: 6379
@@ -39,3 +42,4 @@ services:
       - 6379
 volumes:
   db_data_mariadb:
+  custom:

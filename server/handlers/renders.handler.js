@@ -14,7 +14,7 @@ async function homepage(req, res) {
     return;
   }
   res.render("homepage", {
-    title: "Modern open source URL shortener",
+    title: "Free modern URL shortener",
   });
 }
 
@@ -290,6 +290,7 @@ async function linkEdit(req, res) {
   });
   res.render("partials/links/edit", {
     ...(link && utils.sanitize.link_html(link)),
+    domain: link.domain || env.DEFAULT_DOMAIN,
   });
 }
 
@@ -299,6 +300,7 @@ async function linkEditAdmin(req, res) {
   });
   res.render("partials/admin/links/edit", {
     ...(link && utils.sanitize.link_html(link)),
+    domain: link.domain || env.DEFAULT_DOMAIN,
   });
 }
 

@@ -1,5 +1,5 @@
 const { addMinutes } = require("date-fns");
-const { v4: uuid } = require("uuid");
+const { randomUUID } = require("node:crypto");
 
 const { ROLES } = require("../consts");
 const utils = require("../utils");
@@ -42,7 +42,7 @@ async function add(params, user) {
     password: params.password,
     ...(params.role && { role: params.role }),
     ...(params.verified !== undefined && { verified: params.verified }),
-    verification_token: uuid(),
+    verification_token: randomUUID(),
     verification_expires: utils.dateToUTC(addMinutes(new Date(), 60))
   };
   
@@ -72,7 +72,7 @@ async function update(match, update, methods) {
     });
 
     const user = await query.select("id").first();
-    if (!user) return null;
+    if (!user) return {};
     
     const updateQuery = trx("users").where("id", user.id);
     if (methods?.increments) {
@@ -144,7 +144,7 @@ async function getAdmin(match, params) {
   if (params?.search) {
     const id = parseInt(params?.search);
     if (Number.isNaN(id)) {
-      query.andWhereILike("users.email", "%" + params?.search + "%");
+      query[knex.compatibleILIKE]("users.email", "%" + params?.search + "%");
     } else {
       query.andWhere("users.id", params?.search);
     }
@@ -160,13 +160,16 @@ async function getAdmin(match, params) {
   
   query.leftJoin(
     knex("domains")
-    .select("user_id", knex.raw("string_agg(address, ', ') AS domains"))
+    .select("user_id", knex.isMySQL
+      ? knex.raw("group_concat(address SEPARATOR ', ') AS domains")
+      : knex.raw("string_agg(address, ', ') AS domains")
+    )
     .groupBy("user_id").as("d"),
     "users.id",
     "d.user_id"
   )
   query.leftJoin(
-    knex("links").select("user_id").count("id as links_count").groupBy("user_id").as("l"),
+    knex("links").select("user_id").count("* as links_count").groupBy("user_id").as("l"),
     "users.id",
     "l.user_id"
   );
@@ -176,14 +179,14 @@ async function getAdmin(match, params) {
 
 async function totalAdmin(match, params) {
   const query = knex("users")
-    .count("users.id as count")
-    .fromRaw('users')
+    .count("* as count")
+    .fromRaw("users")
     .where(normalizeMatch(match));
 
   if (params?.search) {
     const id = parseInt(params?.search);
     if (Number.isNaN(id)) {
-      query.andWhereILike("users.email", "%" + params?.search + "%");
+      query[knex.compatibleILIKE]("users.email", "%" + params?.search + "%");
     } else {
       query.andWhere("users.id", params?.search);
     }
@@ -193,7 +196,10 @@ async function totalAdmin(match, params) {
     query.andWhere("domains", params?.domains ? "is not" : "is", null);
     query.leftJoin(
       knex("domains")
-        .select("user_id", knex.raw("string_agg(address, ', ') AS domains"))
+        .select("user_id", knex.isMySQL
+          ? knex.raw("group_concat(address SEPARATOR ', ') AS domains")
+          : knex.raw("string_agg(address, ', ') AS domains")
+        )
         .groupBy("user_id").as("d"),
       "users.id",
       "d.user_id"
@@ -203,13 +209,13 @@ async function totalAdmin(match, params) {
   if (params?.links !== undefined) {
     query.andWhere("links", params?.links ? "is not" : "is", null);
     query.leftJoin(
-      knex("links").select("user_id").count("id as links").groupBy("user_id").as("l"),
+      knex("links").select("user_id").count("* as links").groupBy("user_id").as("l"),
       "users.id",
       "l.user_id"
     );
   }
 
-  const [{count}] = await query;
+  const [{ count }] = await query;
 
   return typeof count === "number" ? count : parseInt(count);
 }
