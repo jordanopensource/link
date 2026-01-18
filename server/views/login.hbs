@@ -1,0 +1,7 @@
+{{> header}}
+{{#if login_disabled}}
+  {{> auth/login_disabled}}
+{{else}}
+  {{> auth/form}}
+{{/if}}
+{{> footer}}
